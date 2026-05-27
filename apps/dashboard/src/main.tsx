@@ -39,6 +39,23 @@ function formatPercent(value: number | null | undefined) {
   return `${Math.round(value * 100)}%`;
 }
 
+function detailString(details: Record<string, unknown> | undefined, key: string) {
+  const value = details?.[key];
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function statusDescription(snapshot: AgentUsageSnapshot) {
+  if (snapshot.status === "ok") {
+    return "Adapter connected and returning telemetry.";
+  }
+
+  if (snapshot.status === "unavailable") {
+    return detailString(snapshot.details, "reason") ?? "Telemetry is not available for this adapter yet.";
+  }
+
+  return detailString(snapshot.details, "error") ?? "The adapter reported an error while reading telemetry.";
+}
+
 function useUsage() {
   const [data, setData] = React.useState<UsageResponse | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -95,6 +112,36 @@ function ContextRing({ snapshot }: { snapshot: AgentUsageSnapshot }) {
   );
 }
 
+function StatusPill({ snapshot }: { snapshot: AgentUsageSnapshot }) {
+  const description = statusDescription(snapshot);
+
+  return (
+    <span
+      className={`status-pill status-pill--${snapshot.status}`}
+      aria-label={`${snapshot.status}: ${description}`}
+      title={description}
+    >
+      {snapshot.status}
+    </span>
+  );
+}
+
+function SnapshotStatusDescription({ snapshot }: { snapshot: AgentUsageSnapshot }) {
+  if (snapshot.status === "ok") return null;
+
+  const label = snapshot.status === "error" ? "Adapter error" : "Telemetry unavailable";
+
+  return (
+    <div className={`snapshot-status snapshot-status--${snapshot.status}`} role="status">
+      <AlertCircle aria-hidden="true" />
+      <div>
+        <strong>{label}</strong>
+        <span>{statusDescription(snapshot)}</span>
+      </div>
+    </div>
+  );
+}
+
 function SnapshotPanel({ snapshot }: { snapshot: AgentUsageSnapshot }) {
   return (
     <section className="panel snapshot-panel">
@@ -103,8 +150,10 @@ function SnapshotPanel({ snapshot }: { snapshot: AgentUsageSnapshot }) {
           <h2>{snapshot.agentName}</h2>
           <p>{snapshot.sessionLabel ?? snapshot.sessionId ?? "Latest session"}</p>
         </div>
-        <span className={`status-pill status-pill--${snapshot.status}`}>{snapshot.status}</span>
+        <StatusPill snapshot={snapshot} />
       </div>
+
+      <SnapshotStatusDescription snapshot={snapshot} />
 
       <div className="snapshot-grid">
         <ContextRing snapshot={snapshot} />
@@ -150,7 +199,10 @@ function App() {
       </header>
 
       {error ? (
-        <section className="notice notice--error">
+        <section
+          className="notice notice--error"
+          title="Agent Companion could not reach the local telemetry API."
+        >
           <AlertCircle aria-hidden="true" />
           <span>{error}</span>
         </section>

@@ -170,6 +170,49 @@ p,
   min-height: 320px;
 }
 
+.snapshot-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: -4px 0 18px;
+  padding: 12px;
+  border: 1px solid rgba(242, 198, 109, 0.45);
+  border-radius: 8px;
+  color: var(--warning);
+  background: rgba(242, 198, 109, 0.08);
+}
+
+.snapshot-status--error {
+  border-color: rgba(255, 111, 127, 0.45);
+  color: var(--danger);
+  background: rgba(255, 111, 127, 0.08);
+}
+
+.snapshot-status svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  margin-top: 1px;
+}
+
+.snapshot-status div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.snapshot-status strong {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.snapshot-status span {
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
 .context-ring {
   --ring-fill: 0deg;
   width: 220px;
