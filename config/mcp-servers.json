@@ -1,0 +1,17 @@
+{
+  "servers": [
+    {
+      "id": "codex-local",
+      "name": "Codex Local",
+      "kind": "agent-telemetry",
+      "command": "node",
+      "args": [
+        "${workspaceRoot}/packages/mcp-codex/dist/index.js"
+      ],
+      "env": {
+        "CODEX_HOME": "${home}/.codex"
+      },
+      "usageTool": "get_usage_snapshot"
+    }
+  ]
+}
