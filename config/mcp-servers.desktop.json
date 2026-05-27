@@ -6,7 +6,7 @@
       "kind": "agent-telemetry",
       "command": "${nodeRuntime}",
       "args": [
-        "${resources}/mcp-codex/index.js"
+        "${resources}/mcp-codex/index.mjs"
       ],
       "env": {
         "CODEX_HOME": "${home}/.codex",
