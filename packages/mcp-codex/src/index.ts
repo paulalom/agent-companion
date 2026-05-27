@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { getCodexUsageSnapshot } from "./codexUsage.js";
+import { getCodexUsageSnapshots } from "./codexUsage.js";
 
 const server = new McpServer({
   name: "agent-companion-mcp-codex",
@@ -16,15 +16,15 @@ server.registerTool(
     inputSchema: {}
   },
   async () => {
-    const snapshot = await getCodexUsageSnapshot();
+    const result = { snapshots: await getCodexUsageSnapshots(16) };
     return {
       content: [
         {
           type: "text",
-          text: JSON.stringify(snapshot, null, 2)
+          text: JSON.stringify(result, null, 2)
         }
       ],
-      structuredContent: snapshot
+      structuredContent: result
     };
   }
 );
@@ -38,13 +38,13 @@ server.registerResource(
     mimeType: "application/json"
   },
   async (uri) => {
-    const snapshot = await getCodexUsageSnapshot();
+    const result = { snapshots: await getCodexUsageSnapshots(16) };
     return {
       contents: [
         {
           uri: uri.href,
           mimeType: "application/json",
-          text: JSON.stringify(snapshot, null, 2)
+          text: JSON.stringify(result, null, 2)
         }
       ]
     };

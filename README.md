@@ -1,6 +1,7 @@
 # Agent Companion
 
-A standalone, agent-agnostic dashboard for local AI agent telemetry and utilities.
+A standalone, agent-agnostic dashboard for local AI agent telemetry and utilities. It shows recent
+agent chats in a compact comparison view with context usage, token totals, and pricing estimates.
 
 The app uses MCP as the integration boundary:
 
@@ -52,3 +53,11 @@ docs                 Architecture notes and integration contract
 MCP gives this project a stable adapter layer. The dashboard does not need to know whether data comes from Codex, Claude Code, Cursor, a shell agent, or a future workflow runner. Each integration only needs to expose the same small telemetry contract over MCP.
 
 See [docs/data-flow.md](docs/data-flow.md) for how Agent Companion talks to Codex today.
+
+## Pricing Estimates
+
+The server enriches snapshots with estimates when an adapter reports an OpenAI model plus input,
+cached input, and output token counts. Codex sessions show both estimated OpenAI API spend and Codex
+flexible-pricing credits. Rates are maintained in `packages/server/src/pricing.ts` from the official
+[OpenAI API pricing](https://openai.com/api/pricing) and
+[Codex rate card](https://help.openai.com/en/articles/20001106-codex-rate-card).

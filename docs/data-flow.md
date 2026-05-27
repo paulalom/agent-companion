@@ -10,11 +10,14 @@ Codex writes session events to local JSONL files under:
 ~/.codex/sessions
 ```
 
-Those files include `token_count` events with token usage and model context window information. The Codex adapter in `packages/mcp-codex` reads the newest relevant session event and exposes it through MCP as:
+Those files include `token_count` events with token usage and model context window information. The Codex adapter in `packages/mcp-codex` reads the newest relevant session events and exposes them through MCP as:
 
 ```text
 get_usage_snapshot
 ```
+
+The tool may return a single `AgentUsageSnapshot` or `{ "snapshots": [...] }`. The local API flattens
+those results across adapters so one integration can report multiple active or recent chats.
 
 The app flow is:
 
@@ -23,6 +26,10 @@ Dashboard UI -> local API -> MCP client -> Codex MCP adapter -> ~/.codex/session
 ```
 
 Codex does not need to run a loop or actively push data for this version. Agent Companion polls its own local API every 15 seconds, and the API asks the MCP adapter for the latest snapshot.
+
+When an OpenAI snapshot includes model, input, cached input, and output counts, the API adds pricing
+estimates before returning the response. API dollar estimates use OpenAI API token rates; Codex credit
+estimates use the Codex token-based rate card.
 
 ## Why Use MCP Here?
 

@@ -1,6 +1,6 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import type { AgentUsageSnapshot, McpServerConfig } from "./types.js";
+import type { AgentUsageSnapshot, McpServerConfig, UsageSnapshotResult } from "./types.js";
 
 type ToolResult = {
   content?: Array<{ type: string; text?: string }>;
@@ -9,7 +9,7 @@ type ToolResult = {
 
 const defaultUsageTool = "get_usage_snapshot";
 
-export async function getUsageSnapshot(serverConfig: McpServerConfig): Promise<AgentUsageSnapshot> {
+export async function getUsageSnapshots(serverConfig: McpServerConfig): Promise<AgentUsageSnapshot[]> {
   const client = new Client({
     name: "agent-companion",
     version: "0.1.0"
@@ -29,7 +29,42 @@ export async function getUsageSnapshot(serverConfig: McpServerConfig): Promise<A
     })) as ToolResult;
     return parseToolResult(result, serverConfig);
   } catch (error) {
-    return {
+    return [
+      {
+        agentId: serverConfig.id,
+        agentName: serverConfig.name,
+        status: "error",
+        capturedAt: new Date().toISOString(),
+        currentContextTokens: null,
+        maxContextTokens: null,
+        percentContext: null,
+        totalTokensUsed: null,
+        lastTurnTokens: null,
+        details: {
+          error: error instanceof Error ? error.message : String(error)
+        }
+      }
+    ];
+  } finally {
+    await client.close().catch(() => undefined);
+  }
+}
+
+function parseToolResult(result: ToolResult, serverConfig: McpServerConfig): AgentUsageSnapshot[] {
+  if (isSnapshotResult(result.structuredContent)) {
+    return normalizeSnapshotResult(result.structuredContent);
+  }
+
+  const text = result.content?.find((item) => item.type === "text" && item.text)?.text;
+  if (text) {
+    const parsed = JSON.parse(text) as unknown;
+    if (isSnapshotResult(parsed)) {
+      return normalizeSnapshotResult(parsed);
+    }
+  }
+
+  return [
+    {
       agentId: serverConfig.id,
       agentName: serverConfig.name,
       status: "error",
@@ -40,41 +75,24 @@ export async function getUsageSnapshot(serverConfig: McpServerConfig): Promise<A
       totalTokensUsed: null,
       lastTurnTokens: null,
       details: {
-        error: error instanceof Error ? error.message : String(error)
+        error: "MCP tool did not return an AgentUsageSnapshot"
       }
-    };
-  } finally {
-    await client.close().catch(() => undefined);
-  }
+    }
+  ];
 }
 
-function parseToolResult(result: ToolResult, serverConfig: McpServerConfig): AgentUsageSnapshot {
-  if (isSnapshot(result.structuredContent)) {
-    return result.structuredContent;
-  }
+function normalizeSnapshotResult(result: UsageSnapshotResult): AgentUsageSnapshot[] {
+  return isSnapshot(result) ? [result] : result.snapshots;
+}
 
-  const text = result.content?.find((item) => item.type === "text" && item.text)?.text;
-  if (text) {
-    const parsed = JSON.parse(text) as unknown;
-    if (isSnapshot(parsed)) {
-      return parsed;
-    }
-  }
+function isSnapshotResult(value: unknown): value is UsageSnapshotResult {
+  return isSnapshot(value) || isSnapshotCollection(value);
+}
 
-  return {
-    agentId: serverConfig.id,
-    agentName: serverConfig.name,
-    status: "error",
-    capturedAt: new Date().toISOString(),
-    currentContextTokens: null,
-    maxContextTokens: null,
-    percentContext: null,
-    totalTokensUsed: null,
-    lastTurnTokens: null,
-    details: {
-      error: "MCP tool did not return an AgentUsageSnapshot"
-    }
-  };
+function isSnapshotCollection(value: unknown): value is { snapshots: AgentUsageSnapshot[] } {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as { snapshots?: unknown };
+  return Array.isArray(candidate.snapshots) && candidate.snapshots.every(isSnapshot);
 }
 
 function isSnapshot(value: unknown): value is AgentUsageSnapshot {

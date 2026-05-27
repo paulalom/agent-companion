@@ -3,7 +3,8 @@ import cors from "cors";
 import express from "express";
 import type { Express } from "express";
 import { loadMcpServersConfig } from "./config.js";
-import { getUsageSnapshot } from "./mcp.js";
+import { getUsageSnapshots } from "./mcp.js";
+import { withPricingEstimate } from "./pricing.js";
 
 export type AgentCompanionAppOptions = {
   configRoot?: string;
@@ -41,7 +42,8 @@ export function createAgentCompanionApp(options: AgentCompanionAppOptions = {}) 
 
   app.get("/api/usage", async (_req, res) => {
     const config = loadMcpServersConfig(options.configRoot);
-    const snapshots = await Promise.all(config.servers.map((server) => getUsageSnapshot(server)));
+    const snapshotsByServer = await Promise.all(config.servers.map((server) => getUsageSnapshots(server)));
+    const snapshots = snapshotsByServer.flat().map(withPricingEstimate);
     res.json({
       snapshots,
       capturedAt: new Date().toISOString()
