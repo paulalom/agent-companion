@@ -46,7 +46,9 @@ export function findWorkspaceRoot(start = process.cwd()) {
 
 export function loadMcpServersConfig(rootDir = findWorkspaceRoot()): McpServersConfig {
   const configPath =
-    process.env.PAULALOM_MCP_CONFIG ?? path.join(rootDir, "config", "mcp-servers.json");
+    process.env.AGENT_COMPANION_MCP_CONFIG ??
+    process.env.PAULALOM_MCP_CONFIG ??
+    path.join(rootDir, "config", "mcp-servers.json");
   const parsed = serversConfigSchema.parse(JSON.parse(readFileSync(configPath, "utf8")));
   return {
     servers: parsed.servers.map((server) => expandServerConfig(server, rootDir))
@@ -69,5 +71,9 @@ function expandEnv(env: Record<string, string>, rootDir: string) {
 }
 
 function expandTokens(value: string, rootDir: string) {
-  return value.replaceAll("${workspaceRoot}", rootDir).replaceAll("${home}", homedir());
+  return value
+    .replaceAll("${workspaceRoot}", rootDir)
+    .replaceAll("${home}", homedir())
+    .replaceAll("${resources}", process.env.AGENT_COMPANION_RESOURCES_PATH ?? rootDir)
+    .replaceAll("${nodeRuntime}", process.env.AGENT_COMPANION_NODE_RUNTIME ?? "node");
 }

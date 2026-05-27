@@ -1,17 +1,69 @@
 {
   "name": "agent-companion",
   "version": "0.1.0",
+  "description": "Standalone MCP-powered companion dashboard for agent telemetry and tools.",
+  "author": "Paul",
+  "license": "MIT",
   "private": true,
   "type": "module",
+  "main": "apps/desktop/dist/main.js",
   "scripts": {
-    "build": "npm run build:mcp-codex && npm run build:server && npm run build:dashboard",
+    "build": "npm run build:mcp-codex && npm run build:server && npm run build:dashboard && npm run build:desktop",
     "build:dashboard": "tsc -p apps/dashboard/tsconfig.json && vite build --config apps/dashboard/vite.config.ts",
+    "build:desktop": "tsc -p apps/desktop/tsconfig.json",
     "build:mcp-codex": "tsc -p packages/mcp-codex/tsconfig.json",
     "build:server": "tsc -p packages/server/tsconfig.json",
     "dev": "npm run build:mcp-codex && concurrently -k -n API,UI \"tsx packages/server/src/index.ts\" \"vite --config apps/dashboard/vite.config.ts --host 0.0.0.0\"",
+    "desktop:dev": "npm run build && electron .",
+    "dist": "npm run build && electron-builder",
+    "dist:dir": "npm run build && electron-builder --dir",
+    "dist:linux": "npm run build && electron-builder --linux AppImage",
+    "dist:mac": "npm run build && electron-builder --mac dmg zip",
+    "dist:win": "npm run build && electron-builder --win portable",
     "preview": "vite preview --config apps/dashboard/vite.config.ts --host 0.0.0.0",
     "start": "npm run build && concurrently -k -n API,UI \"node packages/server/dist/index.js\" \"npm run preview\"",
-    "typecheck": "tsc -p packages/mcp-codex/tsconfig.json --pretty && tsc -p packages/server/tsconfig.json --pretty && tsc -p apps/dashboard/tsconfig.json --pretty"
+    "typecheck": "tsc -p packages/mcp-codex/tsconfig.json --pretty && tsc -p packages/server/tsconfig.json --pretty && tsc -p apps/dashboard/tsconfig.json --pretty && tsc -p apps/desktop/tsconfig.json --pretty"
+  },
+  "build": {
+    "appId": "dev.agentcompanion.app",
+    "productName": "Agent Companion",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "apps/dashboard/dist/**",
+      "apps/desktop/dist/**",
+      "packages/server/dist/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "packages/mcp-codex/dist",
+        "to": "mcp-codex"
+      },
+      {
+        "from": "config/mcp-servers.desktop.json",
+        "to": "config/mcp-servers.desktop.json"
+      }
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        "portable"
+      ]
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ]
+    }
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
@@ -31,6 +83,8 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "concurrently": "^9.1.2",
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3"
   }

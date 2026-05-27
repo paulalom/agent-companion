@@ -23,6 +23,12 @@ type UsageResponse = {
   capturedAt: string;
 };
 
+function apiUrl(path: string) {
+  const apiBase = new URLSearchParams(window.location.search).get("api");
+  if (!apiBase) return path;
+  return `${apiBase.replace(/\/+$/, "")}${path}`;
+}
+
 function formatNumber(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value)) return "n/a";
   return new Intl.NumberFormat().format(value);
@@ -42,7 +48,7 @@ function useUsage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/usage");
+      const response = await fetch(apiUrl("/api/usage"));
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
