@@ -9,6 +9,7 @@ export type AgentUsageSnapshot = {
   capturedAt: string;
   sessionId?: string;
   sessionLabel?: string;
+  summary?: string;
   model?: string;
   provider?: string;
   currentContextTokens: number | null;
@@ -16,6 +17,7 @@ export type AgentUsageSnapshot = {
   percentContext: number | null;
   totalTokensUsed: number | null;
   lastTurnTokens: number | null;
+  tokensLastFiveMinutes: number | null;
   details?: Record<string, unknown>;
 };
 
@@ -39,6 +41,7 @@ type CodexTokenCountEvent = {
   payload?: {
     type?: string;
     info?: CodexTokenCountInfo;
+    message?: string;
   };
   rate_limits?: {
     plan_type?: string;
@@ -48,6 +51,11 @@ type CodexTokenCountEvent = {
 type SessionFile = {
   path: string;
   modifiedMs: number;
+};
+
+type TokenCountSample = {
+  timestampMs: number;
+  totalTokens: number;
 };
 
 type SessionMetaEvent = {
@@ -76,6 +84,8 @@ type CodexSessionSummary = {
   provider?: string;
   sessionPath: string;
   source?: string;
+  summary?: string;
+  tokensLastFiveMinutes: number | null;
 };
 
 export async function getCodexUsageSnapshot(): Promise<AgentUsageSnapshot> {
@@ -121,6 +131,7 @@ export async function getCodexUsageSnapshots(limit = 12): Promise<AgentUsageSnap
         percentContext: null,
         totalTokensUsed: null,
         lastTurnTokens: null,
+        tokensLastFiveMinutes: null,
         details: {
           error: error instanceof Error ? error.message : String(error),
           codexHome,
@@ -172,6 +183,8 @@ async function readSessionSummary(filePath: string): Promise<CodexSessionSummary
   let originator: string | undefined;
   let provider: string | undefined;
   let source: string | undefined;
+  const tokenCounts: TokenCountSample[] = [];
+  const userMessages: string[] = [];
 
   for (const line of lines) {
     try {
@@ -191,6 +204,15 @@ async function readSessionSummary(filePath: string): Promise<CodexSessionSummary
         const candidate = parsed as CodexTokenCountEvent;
         if (candidate.payload?.type === "token_count") {
           event = candidate;
+          const sample = tokenCountSample(candidate);
+          if (sample) {
+            tokenCounts.push(sample);
+          }
+        } else if (candidate.payload?.type === "user_message") {
+          const message = cleanUserMessage(candidate.payload.message);
+          if (message) {
+            userMessages.push(message);
+          }
         }
       }
     } catch {
@@ -207,7 +229,9 @@ async function readSessionSummary(filePath: string): Promise<CodexSessionSummary
         originator,
         provider,
         sessionPath: filePath,
-        source
+        source,
+        summary: summarizeUserMessages(userMessages),
+        tokensLastFiveMinutes: tokensUsedInWindow(tokenCounts, 5 * 60 * 1000)
       }
     : null;
 }
@@ -231,6 +255,7 @@ function snapshotFromSession(summary: CodexSessionSummary): AgentUsageSnapshot {
     capturedAt: event.timestamp ?? new Date().toISOString(),
     sessionId: path.basename(sessionPath, ".jsonl"),
     sessionLabel: path.basename(sessionPath),
+    summary: summary.summary,
     model: summary.model,
     provider: summary.provider,
     currentContextTokens,
@@ -238,6 +263,7 @@ function snapshotFromSession(summary: CodexSessionSummary): AgentUsageSnapshot {
     percentContext,
     totalTokensUsed: numberOrNull(total.total_tokens),
     lastTurnTokens: numberOrNull(last.total_tokens),
+    tokensLastFiveMinutes: summary.tokensLastFiveMinutes,
     details: {
       sessionPath,
       cwd: summary.cwd,
@@ -268,6 +294,7 @@ function unavailable(reason: string, details: Record<string, unknown>): AgentUsa
     percentContext: null,
     totalTokensUsed: null,
     lastTurnTokens: null,
+    tokensLastFiveMinutes: null,
     details: {
       reason,
       ...details
@@ -281,4 +308,85 @@ function numberOrNull(value: unknown) {
 
 function stringOrUndefined(value: unknown) {
   return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+}
+
+function tokenCountSample(event: CodexTokenCountEvent): TokenCountSample | null {
+  const timestampMs = event.timestamp ? Date.parse(event.timestamp) : Number.NaN;
+  const totalTokens = numberOrNull(event.payload?.info?.total_token_usage?.total_tokens);
+  if (!Number.isFinite(timestampMs) || totalTokens == null) return null;
+  return { timestampMs, totalTokens };
+}
+
+function tokensUsedInWindow(samples: TokenCountSample[], windowMs: number, nowMs = Date.now()) {
+  const cutoffMs = nowMs - windowMs;
+  let previousTotal: number | null = null;
+  let tokensUsed = 0;
+
+  for (const sample of [...samples].sort((a, b) => a.timestampMs - b.timestampMs)) {
+    const delta = previousTotal == null ? sample.totalTokens : sample.totalTokens - previousTotal;
+    if (sample.timestampMs >= cutoffMs) {
+      tokensUsed += Math.max(0, delta);
+    }
+    previousTotal = sample.totalTokens;
+  }
+
+  return tokensUsed;
+}
+
+function cleanUserMessage(value: unknown) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.startsWith("<environment_context")) return null;
+
+  const cleaned = trimmed
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return cleaned.length > 0 ? cleaned : null;
+}
+
+function summarizeUserMessages(messages: string[]) {
+  const firstMessage = messages[0];
+  if (!firstMessage) return undefined;
+
+  const normalized = firstMessage
+    .replace(/^(can|could) we\s+/i, "")
+    .replace(/^let'?s\s+/i, "")
+    .replace(/^i'?d like to\s+/i, "")
+    .replace(/[\s"'`]+$/g, "");
+  const sentences = splitSentences(normalized);
+  const summary =
+    sentences.find((sentence) => !isGenericMessage(sentence) && sentence.length >= 28) ??
+    sentences.find((sentence) => !isGenericMessage(sentence)) ??
+    normalized;
+
+  return sentenceCase(clipSentence(summary, 180));
+}
+
+function clipSentence(value: string, maxLength: number) {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxLength) {
+    return `${normalized.replace(/[.!?;:,]+$/g, "")}.`;
+  }
+
+  const clipped = normalized.slice(0, maxLength).replace(/\s+\S*$/, "");
+  return `${clipped.replace(/[.!?;:,]+$/g, "")}...`;
+}
+
+function sentenceCase(value: string) {
+  return value ? `${value[0]?.toUpperCase()}${value.slice(1)}` : value;
+}
+
+function splitSentences(value: string) {
+  return value
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+}
+
+function isGenericMessage(value: string) {
+  return /^(ok|okay|yes|no|thanks|thank you|cool|great|nice)[.!?]?$/i.test(value.trim());
 }

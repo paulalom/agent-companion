@@ -40,6 +40,7 @@ export async function getUsageSnapshots(serverConfig: McpServerConfig): Promise<
         percentContext: null,
         totalTokensUsed: null,
         lastTurnTokens: null,
+        tokensLastFiveMinutes: null,
         details: {
           error: error instanceof Error ? error.message : String(error)
         }
@@ -74,6 +75,7 @@ function parseToolResult(result: ToolResult, serverConfig: McpServerConfig): Age
       percentContext: null,
       totalTokensUsed: null,
       lastTurnTokens: null,
+      tokensLastFiveMinutes: null,
       details: {
         error: "MCP tool did not return an AgentUsageSnapshot"
       }

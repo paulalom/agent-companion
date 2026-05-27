@@ -27,9 +27,11 @@ Dashboard UI -> local API -> MCP client -> Codex MCP adapter -> ~/.codex/session
 
 Codex does not need to run a loop or actively push data for this version. Agent Companion polls its own local API every 15 seconds, and the API asks the MCP adapter for the latest snapshot.
 
-When an OpenAI snapshot includes model, input, cached input, and output counts, the API adds pricing
-estimates before returning the response. API dollar estimates use OpenAI API token rates; Codex credit
-estimates use the Codex token-based rate card.
+When an adapter can derive recent activity, it can include `tokensLastFiveMinutes` so the dashboard
+can show rolling token usage alongside session totals. When an OpenAI snapshot includes model, input,
+cached input, and output counts, the API adds pricing estimates before returning the response. API
+dollar estimates use OpenAI API token rates; Codex credit estimates use the Codex token-based rate
+card.
 
 ## Why Use MCP Here?
 

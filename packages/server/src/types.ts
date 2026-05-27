@@ -5,6 +5,7 @@ export type AgentUsageSnapshot = {
   capturedAt: string;
   sessionId?: string;
   sessionLabel?: string;
+  summary?: string;
   model?: string;
   provider?: string;
   currentContextTokens: number | null;
@@ -12,6 +13,7 @@ export type AgentUsageSnapshot = {
   percentContext: number | null;
   totalTokensUsed: number | null;
   lastTurnTokens: number | null;
+  tokensLastFiveMinutes: number | null;
   pricing?: PricingEstimate;
   details?: Record<string, unknown>;
 };

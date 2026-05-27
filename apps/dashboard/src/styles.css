@@ -177,7 +177,7 @@ p {
 
 .session-table {
   width: 100%;
-  min-width: 920px;
+  min-width: 1040px;
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -199,7 +199,7 @@ p {
 }
 
 .session-table td {
-  height: 62px;
+  height: 72px;
   border-top: 1px solid rgba(255, 255, 255, 0.04);
 }
 
@@ -217,7 +217,7 @@ p {
 
 .session-table th:nth-child(1),
 .session-table td:nth-child(1) {
-  width: 34%;
+  width: 30%;
 }
 
 .session-table th:nth-child(2),
@@ -230,12 +230,14 @@ p {
 .session-table th:nth-child(4),
 .session-table td:nth-child(4),
 .session-table th:nth-child(5),
-.session-table td:nth-child(5) {
-  width: 15%;
-}
-
+.session-table td:nth-child(5),
 .session-table th:nth-child(6),
 .session-table td:nth-child(6) {
+  width: 13%;
+}
+
+.session-table th:nth-child(7),
+.session-table td:nth-child(7) {
   width: 96px;
 }
 
@@ -262,6 +264,10 @@ p {
   color: var(--text);
   font-size: 13px;
   font-weight: 700;
+}
+
+.chat-summary {
+  color: #c6d0d6;
 }
 
 .chat-identity em {

@@ -36,6 +36,7 @@ type AgentUsageSnapshot = {
   capturedAt: string;
   sessionId?: string;
   sessionLabel?: string;
+  summary?: string;
   model?: string;
   provider?: string;
   currentContextTokens: number | null;
@@ -43,6 +44,7 @@ type AgentUsageSnapshot = {
   percentContext: number | null;
   totalTokensUsed: number | null;
   lastTurnTokens: number | null;
+  tokensLastFiveMinutes: number | null;
   pricing?: PricingEstimate;
   details?: Record<string, unknown>;
 };
@@ -151,7 +153,8 @@ function ContextRing({ snapshot }: { snapshot: AgentUsageSnapshot }) {
     `Current context: ${formatNumber(snapshot.currentContextTokens)}`,
     `Max context: ${formatNumber(snapshot.maxContextTokens)}`,
     `Session total: ${formatNumber(snapshot.totalTokensUsed)}`,
-    `Last turn: ${formatNumber(snapshot.lastTurnTokens)}`
+    `Last turn: ${formatNumber(snapshot.lastTurnTokens)}`,
+    `Last 5 min: ${formatNumber(snapshot.tokensLastFiveMinutes)}`
   ].join("\n");
 
   return (
@@ -212,6 +215,7 @@ function SessionTable({ snapshots }: { snapshots: AgentUsageSnapshot[] }) {
               <th>Status</th>
               <th>Context</th>
               <th>Tokens</th>
+              <th>5 min</th>
               <th>Estimate</th>
               <th>Seen</th>
             </tr>
@@ -232,6 +236,7 @@ function SessionTable({ snapshots }: { snapshots: AgentUsageSnapshot[] }) {
 
 function SessionRow({ snapshot }: { snapshot: AgentUsageSnapshot }) {
   const project = projectLabel(snapshot);
+  const summary = snapshot.summary ?? "No summary available.";
   const model = snapshot.model ?? snapshot.pricing?.model ?? "model n/a";
   const effort = detailString(snapshot.details, "effort");
   const rowMeta = [snapshot.agentName, model, effort].filter(Boolean).join(" / ");
@@ -243,6 +248,9 @@ function SessionRow({ snapshot }: { snapshot: AgentUsageSnapshot }) {
           <ContextRing snapshot={snapshot} />
           <div className="chat-identity">
             <strong title={snapshot.sessionLabel ?? snapshot.sessionId ?? project}>{project}</strong>
+            <span className="chat-summary" title={summary}>
+              {summary}
+            </span>
             <span title={rowMeta}>{rowMeta}</span>
             {snapshot.status !== "ok" ? <em>{statusDescription(snapshot)}</em> : null}
           </div>
@@ -261,6 +269,12 @@ function SessionRow({ snapshot }: { snapshot: AgentUsageSnapshot }) {
         <StackedValue
           primary={formatCompact(snapshot.totalTokensUsed)}
           secondary={`last ${formatCompact(snapshot.lastTurnTokens)}`}
+        />
+      </td>
+      <td>
+        <StackedValue
+          primary={formatCompact(snapshot.tokensLastFiveMinutes)}
+          secondary="last 5 min"
         />
       </td>
       <td title={pricingTooltip(snapshot)}>

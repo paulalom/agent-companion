@@ -1,7 +1,8 @@
 # Agent Companion
 
 A standalone, agent-agnostic dashboard for local AI agent telemetry and utilities. It shows recent
-agent chats in a compact comparison view with context usage, token totals, and pricing estimates.
+agent chats in a compact comparison view with context usage, token totals, rolling five-minute usage,
+and pricing estimates.
 
 The app uses MCP as the integration boundary:
 

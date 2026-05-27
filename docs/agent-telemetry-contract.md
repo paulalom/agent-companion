@@ -25,6 +25,7 @@ type AgentUsageSnapshot = {
   percentContext: number | null;
   totalTokensUsed: number | null;
   lastTurnTokens: number | null;
+  tokensLastFiveMinutes: number | null;
   details?: Record<string, unknown>;
 };
 ```
